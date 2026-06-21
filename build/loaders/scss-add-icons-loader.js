@@ -14,7 +14,7 @@ module.exports = function loadScss(scssSource) {
         }
         scssSource +=
             '\n' +
-            [...iconFontScssSource.matchAll(/\n\$fa-var-([\w-]+):/g)]
+            [...iconFontScssSource.matchAll(/[\r\n]+[$]fa-var-([\w-]+):/g)]
                 .map(([, name]) => name)
                 .map((icon) => `.fa-${icon}:before { content: $fa-var-${icon}; }`)
                 .join('\n');

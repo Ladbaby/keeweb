@@ -202,7 +202,7 @@ async function checkContentRequestPermissions(request) {
     try {
         await alertWithTimeout({
             header: Locale.extensionConnectHeader,
-            icon: 'exchange-alt',
+            icon: 'right-left',
             buttons: [Alerts.buttons.allow, Alerts.buttons.deny],
             view: extensionConnectView,
             wide: true,

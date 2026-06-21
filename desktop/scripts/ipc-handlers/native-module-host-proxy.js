@@ -15,7 +15,7 @@ function startHost() {
         const exeName = path.basename(process.execPath, '.exe');
         const args = ['--native-module-host', '--in-process-gpu', '--disable-gpu'];
         if (exeName === 'Electron') {
-            args.unshift(path.join(process.mainModule.path, 'main.js'));
+            args.unshift(path.join(require.main.filename, 'main.js'));
         }
 
         nativeModuleHost = spawn(process.helperExecPath, args, {

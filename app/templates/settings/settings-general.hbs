@@ -1,5 +1,5 @@
 <div class="settings__content">
-    <h1 id="top"><i class="fa fa-cog settings__head-icon"></i> {{res 'setGenTitle'}}</h1>
+    <h1 id="top"><i class="fa fa-gear settings__head-icon"></i> {{res 'setGenTitle'}}</h1>
 
     {{#if updateWaitingReload}}
     <h2 class="action-color">{{res 'setGenUpdate'}}</h2>
@@ -57,7 +57,7 @@
                      data-theme="{{key}}"
                 >
                     <div class="settings__general-theme-name">{{name}}</div>
-                    <button class="settings__general-theme-button"><i class="fa fa-ellipsis-h"></i></button>
+                    <button class="settings__general-theme-button"><i class="fa fa-bars-staggered"></i></button>
                 </div>
             {{/each}}
             <div class="settings__general-theme settings__general-theme-plugins" data-theme="...">
@@ -244,7 +244,7 @@
                 <a href="{{hibpLink}}" rel="noreferrer noopener" target="_blank">Have I Been Pwned</a>
             {{~/res~}}
         </label>
-        <i class="fa fa-info-circle info-btn settings__general-toggle-help-hibp"></i>
+        <i class="fa fa-circle-info info-btn settings__general-toggle-help-hibp"></i>
         <div class="settings__general-help-hibp hide">
             {{~#res 'setGenHelpHIBP'~}}
                 <a href="{{hibpPrivacyLink}}" rel="noreferrer noopener" target="_blank">{{res 'setGenHelpHIBPLink'}}</a>

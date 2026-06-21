@@ -6,6 +6,7 @@ if (process.send && process.argv.includes('--native-module-host')) {
 }
 
 const electron = require('electron');
+require('@electron/remote/main').initialize();
 const path = require('path');
 const fs = require('fs');
 const url = require('url');
@@ -261,7 +262,7 @@ function getDefaultTheme() {
 }
 
 function selectDarkOrLightTheme(theme) {
-    const dark = electron.nativeTheme.shouldUseDarkColors;
+    const dark = electron.nativeTheme.shouldUseDarkColors === true;
     for (const [darkTheme, lightTheme] of Object.entries(darkLightThemes)) {
         if (darkTheme === theme || lightTheme === theme) {
             return dark ? darkTheme : lightTheme;
@@ -294,11 +295,9 @@ function createMainWindow() {
         frame: !frameless,
         backgroundColor: bgColor,
         webPreferences: {
-            contextIsolation: false,
             backgroundThrottling: false,
             nodeIntegration: true,
             nodeIntegrationInWorker: true,
-            enableRemoteModule: true,
             spellcheck: false,
             v8CacheOptions: 'none'
         }
@@ -307,6 +306,7 @@ function createMainWindow() {
         windowOptions.icon = path.join(__dirname, 'img', 'icon.png');
     }
     mainWindow = new electron.BrowserWindow(windowOptions);
+    require('@electron/remote/main').enable(mainWindow.webContents);
     logProgress('creating main window');
 
     mainWindow.loadURL(htmlPath);
@@ -717,7 +717,7 @@ function setEnv() {
         main.commandLine.appendSwitch('force-color-profile', 'srgb');
     }
 
-    main.allowRendererProcessReuse = true;
+    // allowRendererProcessReuse is default in Electron 24+
 
     logProgress('setting env');
 }
@@ -821,7 +821,7 @@ function getAppMainRoot() {
     if (isDev) {
         return __dirname;
     } else {
-        return process.mainModule.path;
+        return require.main.filename;
     }
 }
 
@@ -976,15 +976,17 @@ function migrateOldConfigs(key) {
 }
 
 function httpRequest(config, log, onLoad) {
-    // eslint-disable-next-line node/no-deprecated-api
-    const opts = url.parse(config.url);
+    const nodeFetch = require('node-fetch');
 
-    opts.method = config.method || 'GET';
-    opts.headers = {
-        'User-Agent': mainWindow.webContents.userAgent,
-        ...config.headers
+    const opts = {
+        method: config.method || 'GET',
+        headers: {
+            'User-Agent': mainWindow.webContents.userAgent,
+            ...config.headers
+        },
+        timeout: 60000,
+        agent: undefined
     };
-    opts.timeout = 60000;
 
     let data;
     if (config.data) {
@@ -993,41 +995,28 @@ function httpRequest(config, log, onLoad) {
         } else {
             data = Buffer.from(config.data);
         }
-        // Electron's API doesn't like that, while node.js needs it
-        // opts.headers['Content-Length'] = data.byteLength;
+        opts.body = data;
     }
 
-    const req = electron.net.request(opts);
-
-    req.on('response', (res) => {
-        const chunks = [];
-        const onClose = () => {
-            log('info', 'HTTP response', opts.method, config.url, res.statusCode, res.headers);
-            onLoad({
-                status: res.statusCode,
-                response: Buffer.concat(chunks).toString('hex'),
-                headers: res.headers
+    nodeFetch(config.url, opts)
+        .then((res) => {
+            const chunks = [];
+            res.body.on('data', (chunk) => {
+                chunks.push(chunk);
             });
-        };
-        res.on('data', (chunk) => {
-            chunks.push(chunk);
+            res.body.on('end', () => {
+                log('info', 'HTTP response', opts.method, config.url, res.status, res.headers);
+                onLoad({
+                    status: res.status,
+                    response: Buffer.concat(chunks).toString('hex'),
+                    headers: res.headers.raw()
+                });
+            });
+        })
+        .catch((e) => {
+            log('error', 'HTTP error', opts.method, config.url, e);
+            return config.error && config.error('network error', {});
         });
-        res.on('end', () => {
-            onClose();
-        });
-    });
-    req.on('error', (e) => {
-        log('error', 'HTTP error', opts.method, config.url, e);
-        return config.error && config.error('network error', {});
-    });
-    req.on('timeout', () => {
-        req.abort();
-        return config.error && config.error('timeout', {});
-    });
-    if (data) {
-        req.write(data);
-    }
-    req.end();
 }
 
 function setupIpcHandlers() {

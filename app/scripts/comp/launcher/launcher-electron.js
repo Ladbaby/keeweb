@@ -24,10 +24,10 @@ const Launcher = {
         return this.req('electron');
     },
     remoteApp() {
-        return this.electron().remote.app;
+        return this.req('@electron/remote').app;
     },
     remReq(mod) {
-        return this.electron().remote.require(mod);
+        return this.req('@electron/remote').require(mod);
     },
     openLink(href) {
         if (/^(http|https|ftp|sftp|mailto):/i.test(href)) {
@@ -36,7 +36,9 @@ const Launcher = {
     },
     devTools: true,
     openDevTools() {
-        this.electron().remote.getCurrentWindow().webContents.openDevTools({ mode: 'bottom' });
+        this.req('@electron/remote')
+            .getCurrentWindow()
+            .webContents.openDevTools({ mode: 'bottom' });
     },
     getSaveFileName(defaultPath, callback) {
         if (defaultPath) {
@@ -226,7 +228,7 @@ const Launcher = {
         }
     },
     isAppFocused() {
-        return !!this.electron().remote.BrowserWindow.getFocusedWindow();
+        return !!this.req('@electron/remote').BrowserWindow.getFocusedWindow();
     },
     showMainWindow() {
         this.remoteApp().showAndFocusMainWindow();

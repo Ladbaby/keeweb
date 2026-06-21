@@ -52,23 +52,38 @@ module.exports = function makeFontAwesomeWoff2() {
     });
 };
 
+// Icon alias mapping: FA5 icon names that were removed/renamed in FA6
+// Maps old icon names to their FA6 replacement SVG names
+const ICON_ALIASES = {
+    'sort-alpha-down': 'sort-down',
+    'sort-alpha-down-alt': 'sort-up',
+    'sort-numeric-down': 'sort-down',
+    'sort-numeric-down-alt': 'sort-up',
+    'sort-amount-down': 'sort-down',
+    'level-down-alt': 'arrow-down-wide-short',
+    onedrive: 'cloud'
+};
+
 function buildFont(loader, scssSource) {
     const includedIcons = {};
-    const includedIconList = [...scssSource.matchAll(/\n\$fa-var-([\w-]+):/g)].map(
+    const includedIconList = [...scssSource.matchAll(/[\r\n]+[$]fa-var-([\w-]+):/g)].map(
         ([, name]) => name
     );
     for (const iconName of includedIconList) {
         if (includedIcons[iconName]) {
             throw new Error(`Duplicate icon: $fa-var-${iconName}`);
         }
-        if (!allIcons[iconName]) {
-            throw new Error(`Icon not found: "${iconName}"`);
+        const resolvedName = ICON_ALIASES[iconName] || iconName;
+        if (!allIcons[resolvedName]) {
+            throw new Error(
+                `Icon not found: "${iconName}"${ICON_ALIASES[iconName] ? '' : ' - check icon name'}`
+            );
         }
         includedIcons[iconName] = true;
     }
 
     const fontStream = new SVGIcons2SVGFontStream({
-        fontName: 'Font Awesome 5 Free',
+        fontName: 'Font Awesome 6 Free',
         round: 10e12,
         log() {}
     });
@@ -79,7 +94,8 @@ function buildFont(loader, scssSource) {
     let charCode = 0xf000;
     for (const iconName of includedIconList) {
         ++charCode;
-        const svgIconPath = allIcons[iconName];
+        const resolvedName = ICON_ALIASES[iconName] || iconName;
+        const svgIconPath = allIcons[resolvedName];
 
         loader.addDependency(svgIconPath);
 

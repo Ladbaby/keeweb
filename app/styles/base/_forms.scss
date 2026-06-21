@@ -192,7 +192,7 @@ input[type='checkbox'] {
         top: 0.08em;
     }
     &:checked + label:before {
-        content: $fa-var-check-square-o;
+        content: $fa-var-square-check;
     }
 }
 

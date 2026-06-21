@@ -12,8 +12,6 @@ const rootDir = path.join(__dirname, '..');
 
 const pkg = require('../package.json');
 
-process.noDeprecation = true; // for css loaders
-
 function config(options) {
     const mode = options.mode || 'production';
     const devMode = mode === 'development';
@@ -161,7 +159,7 @@ function config(options) {
                     test: /\.js$/,
                     exclude: /(node_modules|babel-helpers\.js)/,
                     loader: 'babel-loader',
-                    options: { cacheDirectory: true }
+                    options: { cacheDirectory: false }
                 },
                 { test: /argon2\.wasm/, type: 'javascript/auto', loader: 'base64-loader' },
                 { test: /argon2(\.min)?\.js/, loader: 'raw-loader' },
@@ -219,7 +217,7 @@ function config(options) {
                 $: 'jquery',
                 babelHelpers: 'babel-helpers'
             }),
-            new webpack.IgnorePlugin(/^(moment)$/),
+            new webpack.IgnorePlugin({ resourceRegExp: /^(moment)$/ }),
             new MiniCssExtractPlugin({
                 filename: 'css/app.css',
                 chunkFilename: devMode ? 'css/[id].css' : 'css/[id].[contenthash].css'
