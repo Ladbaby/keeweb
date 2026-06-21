@@ -5,6 +5,10 @@ class Events extends EventEmitter {
         super();
         this.setMaxListeners(1000);
     }
+
+    off(event, listener) {
+        return this.removeListener(event, listener);
+    }
 }
 
 const instance = new Events();

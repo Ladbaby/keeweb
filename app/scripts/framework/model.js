@@ -104,7 +104,7 @@ class Model {
     }
 
     off(eventName, listener) {
-        this[SymbolEvents].off(eventName, listener);
+        this[SymbolEvents].removeListener(eventName, listener);
     }
 
     emit(eventName, ...args) {

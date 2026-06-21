@@ -282,7 +282,7 @@ class View extends EventEmitter {
         if (listener === undefined) {
             return super.removeAllListeners(event);
         } else {
-            return super.off(event, listener);
+            return super.removeListener(event, listener);
         }
     }
 }
