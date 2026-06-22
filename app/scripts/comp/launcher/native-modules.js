@@ -16,12 +16,12 @@ if (Launcher) {
     let promises = {};
     let ykChalRespCallbacks = {};
 
-    const { ipcRenderer } = Launcher.electron();
-    ipcRenderer.on('nativeModuleCallback', (e, msg) => NativeModules.hostCallback(msg));
-    ipcRenderer.on('nativeModuleHostError', (e, err) => NativeModules.hostError(err));
-    ipcRenderer.on('nativeModuleHostExit', (e, { code, sig }) => NativeModules.hostExit(code, sig));
-    ipcRenderer.on('nativeModuleHostDisconnect', () => NativeModules.hostDisconnect());
-    ipcRenderer.on('log', (e, ...args) => NativeModules.log(...args));
+    const ea = window.electronAPI;
+    ea.ipcOn('nativeModuleCallback', (msg) => NativeModules.hostCallback(msg));
+    ea.ipcOn('nativeModuleHostError', (err) => NativeModules.hostError(err));
+    ea.ipcOn('nativeModuleHostExit', ({ code, sig }) => NativeModules.hostExit(code, sig));
+    ea.ipcOn('nativeModuleHostDisconnect', () => NativeModules.hostDisconnect());
+    ea.ipcOn('log', (...args) => NativeModules.log(...args));
 
     const handlers = {
         yubikeys(numYubiKeys) {
@@ -151,7 +151,7 @@ if (Launcher) {
                 // logger.debug('Call', cmd, args, callId);
                 promises[callId] = { cmd, resolve, reject };
 
-                ipcRenderer.send('nativeModuleCall', { cmd, args, callId });
+                ea.ipcSend('nativeModuleCall', { cmd, args, callId });
             });
         },
 
@@ -187,45 +187,49 @@ if (Launcher) {
         },
 
         hardwareCryptoDeleteKey: async () => {
-            await ipcRenderer.invoke('hardwareCryptoDeleteKey');
+            await ea.ipcInvoke('hardwareCryptoDeleteKey');
         },
 
         hardwareEncrypt: async (value) => {
-            const { data, salt } = await ipcRenderer.invoke('hardwareEncrypt', value.dataAndSalt());
+            const { data, salt } = await ea.ipcInvoke('hardwareEncrypt', value.value, value.salt);
             return new kdbxweb.ProtectedValue(data, salt);
         },
 
         hardwareDecrypt: async (value, touchIdPrompt) => {
-            const { data, salt } = await ipcRenderer.invoke(
+            const { data, salt } = await ea.ipcInvoke(
                 'hardwareDecrypt',
-                value.dataAndSalt(),
+                value.value,
+                value.salt,
                 touchIdPrompt
             );
             return new kdbxweb.ProtectedValue(data, salt);
         },
 
         windowsHelloEncrypt: async (value) => {
-            const { data, salt } = await ipcRenderer.invoke(
+            const { data, salt } = await ea.ipcInvoke(
                 'windowsHelloEncrypt',
-                value.dataAndSalt()
+                value.value,
+                value.salt
             );
             return new kdbxweb.ProtectedValue(data, salt);
         },
 
-        windowsHelloDecrypt: async (value) => {
-            const { data, salt } = await ipcRenderer.invoke(
+        windowsHelloDecrypt: async (value, touchIdPrompt) => {
+            const { data, salt } = await ea.ipcInvoke(
                 'windowsHelloDecrypt',
-                value.dataAndSalt()
+                value.value,
+                value.salt,
+                touchIdPrompt
             );
             return new kdbxweb.ProtectedValue(data, salt);
         },
 
         windowsHelloDeleteKey: async () => {
-            await ipcRenderer.invoke('windowsHelloDeleteKey');
+            await ea.ipcInvoke('windowsHelloDeleteKey');
         },
 
         windowsHelloIsAvailable: async () => {
-            return await ipcRenderer.invoke('windowsHelloIsAvailable');
+            return await ea.ipcInvoke('windowsHelloIsAvailable');
         },
 
         kbdGetActiveWindow(options) {

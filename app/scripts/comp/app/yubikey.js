@@ -261,15 +261,15 @@ const YubiKey = {
         const { vid, pid, serial, slot } = chalResp;
         const yubiKey = { vid, pid, serial };
 
-        challenge = Buffer.from(challenge);
+        challenge = new Uint8Array(challenge);
 
         // https://github.com/Yubico/yubikey-personalization-gui/issues/86
         // https://github.com/keepassxreboot/keepassxc/blob/develop/src/keys/drivers/YubiKey.cpp#L318
 
         const padLen = YubiKeyChallengeSize - challenge.byteLength;
 
-        const paddedChallenge = Buffer.alloc(YubiKeyChallengeSize, padLen);
-        challenge.copy(paddedChallenge);
+        const paddedChallenge = new Uint8Array(YubiKeyChallengeSize).fill(padLen);
+        paddedChallenge.set(challenge);
 
         NativeModules.yubiKeyChallengeResponse(
             yubiKey,
@@ -277,7 +277,7 @@ const YubiKey = {
             slot,
             (err, result) => {
                 if (result) {
-                    result = Buffer.from(result);
+                    result = new Uint8Array(result);
                 }
                 if (err) {
                     err.ykError = true;

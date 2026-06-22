@@ -40,15 +40,13 @@ const BrowserExtensionConnector = {
         this.browserWindowMessage = this.browserWindowMessage.bind(this);
 
         if (Launcher) {
-            const { ipcRenderer } = Launcher.electron();
+            const ea = window.electronAPI;
 
-            ipcRenderer.on('browserExtensionSocketConnected', (e, socketId, connectionInfo) =>
+            ea.ipcOn('browserExtensionSocketConnected', (socketId, connectionInfo) =>
                 this.socketConnected(socketId, connectionInfo)
             );
-            ipcRenderer.on('browserExtensionSocketClosed', (e, socketId) =>
-                this.socketClosed(socketId)
-            );
-            ipcRenderer.on('browserExtensionSocketRequest', (e, socketId, request) =>
+            ea.ipcOn('browserExtensionSocketClosed', (socketId) => this.socketClosed(socketId));
+            ea.ipcOn('browserExtensionSocketRequest', (socketId, request) =>
                 this.socketRequest(socketId, request)
             );
 
@@ -117,20 +115,22 @@ const BrowserExtensionConnector = {
     },
 
     enable(browser, extension, enabled) {
-        const { ipcRenderer } = Launcher.electron();
-        ipcRenderer.invoke('browserExtensionConnectorEnable', browser, extension, enabled);
+        window.electronAPI.ipcInvoke(
+            'browserExtensionConnectorEnable',
+            browser,
+            extension,
+            enabled
+        );
     },
 
     async startDesktopAppListener() {
-        const { ipcRenderer } = Launcher.electron();
-        ipcRenderer.invoke('browserExtensionConnectorStart', {
+        window.electronAPI.ipcInvoke('browserExtensionConnectorStart', {
             appleTeamId: RuntimeInfo.appleTeamId
         });
     },
 
     stopDesktopAppListener() {
-        const { ipcRenderer } = Launcher.electron();
-        ipcRenderer.invoke('browserExtensionConnectorStop');
+        window.electronAPI.ipcInvoke('browserExtensionConnectorStop');
     },
 
     browserWindowMessage(e) {
@@ -179,13 +179,11 @@ const BrowserExtensionConnector = {
     },
 
     sendSocketEvent(data) {
-        const { ipcRenderer } = Launcher.electron();
-        ipcRenderer.invoke('browserExtensionConnectorSocketEvent', data);
+        window.electronAPI.ipcInvoke('browserExtensionConnectorSocketEvent', data);
     },
 
     sendSocketResult(socketId, data) {
-        const { ipcRenderer } = Launcher.electron();
-        ipcRenderer.invoke('browserExtensionConnectorSocketResult', socketId, data);
+        window.electronAPI.ipcInvoke('browserExtensionConnectorSocketResult', socketId, data);
     },
 
     sendEvent(data) {
@@ -229,8 +227,7 @@ const BrowserExtensionConnector = {
     terminateConnection(connectionId) {
         connectionId = +connectionId;
         if (Launcher) {
-            const { ipcRenderer } = Launcher.electron();
-            ipcRenderer.invoke('browserExtensionConnectorCloseSocket', connectionId);
+            window.electronAPI.ipcInvoke('browserExtensionConnectorCloseSocket', connectionId);
         } else {
             ProtocolImpl.deleteConnection(connectionId);
         }

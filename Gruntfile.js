@@ -374,6 +374,7 @@ module.exports = function (grunt) {
                 electronVersion,
                 overwrite: true,
                 asar: true,
+                prune: false,
                 appCopyright: `Copyright © ${year} Antelle`,
                 appVersion: pkg.version,
                 buildVersion: sha

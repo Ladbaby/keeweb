@@ -295,10 +295,12 @@ function createMainWindow() {
         frame: !frameless,
         backgroundColor: bgColor,
         webPreferences: {
+            contextIsolation: true,
             backgroundThrottling: false,
-            contextIsolation: false,
-            nodeIntegration: true,
-            nodeIntegrationInWorker: true,
+            preload: path.join(__dirname, 'preload.js'),
+            nodeIntegration: false,
+            nodeIntegrationInWorker: false,
+            sandbox: false,
             spellcheck: false,
             v8CacheOptions: 'none'
         }

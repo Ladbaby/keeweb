@@ -13,7 +13,7 @@ mod platform {
         Err(Error::from_reason("Windows Hello requires Windows"))
     }
 
-    pub async fn unprotect(_key_tag: String, _data: Buffer) -> Result<Buffer> {
+    pub async fn unprotect(_key_tag: String, _message: String, _data: Buffer) -> Result<Buffer> {
         Err(Error::from_reason("Windows Hello requires Windows"))
     }
 
@@ -39,8 +39,8 @@ pub async fn protect(key_tag: String, data: Buffer) -> Result<Buffer> {
 
 /// Unprotect (decrypt) data that was previously protected with `protect()`.
 #[napi]
-pub async fn unprotect(key_tag: String, data: Buffer) -> Result<Buffer> {
-    platform::unprotect(&key_tag, data).await
+pub async fn unprotect(key_tag: String, message: String, data: Buffer) -> Result<Buffer> {
+    platform::unprotect(&key_tag, &message, data).await
 }
 
 /// Delete the Windows Hello-protected key identified by key_tag.

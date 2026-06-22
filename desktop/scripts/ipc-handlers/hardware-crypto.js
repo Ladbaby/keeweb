@@ -18,12 +18,12 @@ async function hardwareCryptoDeleteKey() {
     keyChecked = false;
 }
 
-async function hardwareEncrypt(e, value) {
-    return await hardwareCrypto(value, true);
+async function hardwareEncrypt(e, value, salt) {
+    return await hardwareCrypto({ data: value, salt }, true);
 }
 
-async function hardwareDecrypt(e, value, touchIdPrompt) {
-    return await hardwareCrypto(value, false, touchIdPrompt);
+async function hardwareDecrypt(e, value, salt, touchIdPrompt) {
+    return await hardwareCrypto({ data: value, salt }, false, touchIdPrompt);
 }
 
 async function hardwareCrypto(value, encrypt, touchIdPrompt) {

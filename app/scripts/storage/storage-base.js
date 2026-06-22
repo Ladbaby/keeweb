@@ -140,21 +140,21 @@ class StorageBase {
     }
 
     _httpRequestLauncher(config, onLoad) {
-        Launcher.remoteApp().httpRequest(
+        window.electronAPI.remoteAppHttpRequest(
             config,
             (level, ...args) => this.logger[level](...args),
             ({ status, response, headers }) => {
-                response = Buffer.from(response, 'hex');
+                const bytes = window.electronAPI.bufferFromHex(response);
                 if (config.responseType === 'json') {
                     try {
-                        response = JSON.parse(response.toString('utf8'));
+                        response = JSON.parse(new TextDecoder('utf-8').decode(bytes));
                     } catch (e) {
                         return config.error && config.error('json parse error');
                     }
                 } else {
-                    response = response.buffer.slice(
-                        response.byteOffset,
-                        response.byteOffset + response.length
+                    response = bytes.buffer.slice(
+                        bytes.byteOffset,
+                        bytes.byteOffset + bytes.length
                     );
                 }
                 onLoad({

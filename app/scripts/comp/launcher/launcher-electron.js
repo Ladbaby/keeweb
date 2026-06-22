@@ -7,119 +7,109 @@ import { noop } from 'util/fn';
 
 const logger = new Logger('launcher');
 
+const ea = window.electronAPI;
+
 const Launcher = {
     name: 'electron',
-    version: window.process.versions.electron,
+    version: ea.electronVersion,
     autoTypeSupported: true,
     thirdPartyStoragesSupported: true,
     clipboardSupported: true,
-    req: window.require,
     platform() {
-        return process.platform;
+        return ea.platform;
     },
     arch() {
-        return process.arch;
-    },
-    electron() {
-        return this.req('electron');
-    },
-    remoteApp() {
-        return this.req('@electron/remote').app;
-    },
-    remReq(mod) {
-        return this.req('@electron/remote').require(mod);
+        return ea.arch;
     },
     openLink(href) {
         if (/^(http|https|ftp|sftp|mailto):/i.test(href)) {
-            this.electron().shell.openExternal(href);
+            ea.shellOpenExternal(href);
         }
     },
     devTools: true,
     openDevTools() {
-        this.req('@electron/remote')
-            .getCurrentWindow()
-            .webContents.openDevTools({ mode: 'bottom' });
+        ea.openDevTools();
     },
     getSaveFileName(defaultPath, callback) {
         if (defaultPath) {
-            const homePath = this.remReq('electron').app.getPath('userDesktop');
-            defaultPath = this.joinPath(homePath, defaultPath);
+            const homePath = ea.remoteAppGetPath('userDesktop');
+            defaultPath = ea.pathJoin(homePath, defaultPath);
         }
-        this.remReq('electron')
-            .dialog.showSaveDialog({
-                title: Locale.launcherSave,
-                defaultPath,
-                filters: [{ name: Locale.launcherFileFilter, extensions: ['kdbx'] }]
-            })
-            .then((res) => callback(res.filePath));
+        ea.remoteAppShowSaveDialog({
+            title: Locale.launcherSave,
+            defaultPath,
+            filters: [{ name: Locale.launcherFileFilter, extensions: ['kdbx'] }]
+        }).then((res) => callback(res.filePath));
     },
     getUserDataPath(fileName) {
         if (!this.userDataPath) {
-            this.userDataPath = this.remoteApp().getPath('userData');
+            this.userDataPath = ea.remoteAppGetPath('userData');
         }
-        return this.joinPath(this.userDataPath, fileName || '');
+        return ea.pathJoin(this.userDataPath, fileName || '');
     },
     getTempPath(fileName) {
-        let tempPath = this.joinPath(this.remoteApp().getPath('temp'), 'KeeWeb');
-        const fs = this.req('fs');
-        if (!fs.existsSync(tempPath)) {
-            fs.mkdirSync(tempPath);
+        let tempPath = ea.pathJoin(ea.remoteAppGetPath('temp'), 'KeeWeb');
+        if (!ea.fsExistsSync(tempPath)) {
+            ea.fsMkdirSync(tempPath);
         }
         if (fileName) {
-            tempPath = this.joinPath(tempPath, fileName);
+            tempPath = ea.pathJoin(tempPath, fileName);
         }
         return tempPath;
     },
     getDocumentsPath(fileName) {
-        return this.joinPath(this.remoteApp().getPath('documents'), fileName || '');
+        return ea.pathJoin(ea.remoteAppGetPath('documents'), fileName || '');
     },
     getAppPath(fileName) {
-        const dirname = this.req('path').dirname;
-        const appPath = __dirname.endsWith('app.asar') ? __dirname : this.remoteApp().getAppPath();
-        return this.joinPath(dirname(appPath), fileName || '');
+        const appPath = ea.remoteAppGetAppPath();
+        const dir = ea.pathDirname(appPath);
+        return ea.pathJoin(dir, fileName || '');
     },
     getWorkDirPath(fileName) {
-        return this.joinPath(process.cwd(), fileName || '');
+        return ea.pathJoin(ea.cwd(), fileName || '');
     },
     joinPath(...parts) {
-        return this.req('path').join(...parts);
+        return ea.pathJoin(...parts);
     },
     writeFile(path, data, callback) {
-        this.req('fs').writeFile(path, window.Buffer.from(data), callback);
+        ea.fsWriteFile(path, ea.bufferFrom(data), callback);
     },
     readFile(path, encoding, callback) {
-        this.req('fs').readFile(path, encoding, (err, contents) => {
+        ea.fsReadFile(path, encoding, (err, contents) => {
             const data = typeof contents === 'string' ? contents : new Uint8Array(contents);
             callback(data, err);
         });
     },
     fileExists(path, callback) {
-        const fs = this.req('fs');
-        fs.access(path, fs.constants.F_OK, (err) => callback(!err));
+        ea.fsAccessExists(path, (exists) => {
+            callback(exists);
+        });
     },
     fileExistsSync(path) {
-        const fs = this.req('fs');
-        return !fs.accessSync(path, fs.constants.F_OK);
+        try {
+            ea.fsAccessSync(path);
+            return true;
+        } catch (e) {
+            return false;
+        }
     },
     deleteFile(path, callback) {
-        this.req('fs').unlink(path, callback || noop);
+        ea.fsUnlink(path, callback || noop);
     },
     statFile(path, callback) {
-        this.req('fs').stat(path, (err, stats) => callback(stats, err));
+        ea.fsStat(path, (err, stats) => callback(stats, err));
     },
     mkdir(dir, callback) {
-        const fs = this.req('fs');
-        const path = this.req('path');
         const stack = [];
 
         const collect = function (dir, stack, callback) {
-            fs.exists(dir, (exists) => {
+            ea.fsExists(dir, (exists) => {
                 if (exists) {
                     return callback();
                 }
 
                 stack.unshift(dir);
-                const newDir = path.dirname(dir);
+                const newDir = ea.pathDirname(dir);
                 if (newDir === dir || !newDir || newDir === '.' || newDir === '/') {
                     return callback();
                 }
@@ -133,27 +123,32 @@ const Launcher = {
                 return callback();
             }
 
-            fs.mkdir(stack.shift(), (err) => (err ? callback(err) : create(stack, callback)));
+            ea.fsMkdir(stack.shift(), (err) => (err ? callback(err) : create(stack, callback)));
         };
 
         collect(dir, stack, () => create(stack, callback));
     },
     parsePath(fileName) {
-        const path = this.req('path');
         return {
             path: fileName,
-            dir: path.dirname(fileName),
-            file: path.basename(fileName)
+            dir: ea.pathDirname(fileName),
+            file: ea.pathBasename(fileName)
         };
     },
-    createFsWatcher(path) {
-        return this.req('fs').watch(path, { persistent: false });
+    createFsWatcher(filePath) {
+        return ea.fsWatch(filePath);
+    },
+    fsWatcherOn(id, event, callback) {
+        ea.fsWatcherOn(id, event, callback);
+    },
+    fsWatcherClose(id) {
+        ea.fsWatcherClose(id);
     },
     loadConfig(name) {
-        return this.remoteApp().loadConfig(name);
+        return ea.remoteAppLoadConfig(name);
     },
     saveConfig(name, data) {
-        return this.remoteApp().saveConfig(name, data);
+        return ea.remoteAppSaveConfig(name, data);
     },
     preventExit(e) {
         e.returnValue = false;
@@ -164,12 +159,11 @@ const Launcher = {
         this.requestExit();
     },
     requestExit() {
-        const app = this.remoteApp();
-        app.setHookBeforeQuitEvent(false);
+        ea.remoteAppSetHookBeforeQuitEvent(false);
         if (this.pendingUpdateFile) {
-            app.restartAndUpdate(this.pendingUpdateFile);
+            ea.remoteAppRestartAndUpdate(this.pendingUpdateFile);
         } else {
-            app.quit();
+            ea.remoteAppQuit();
         }
     },
     requestRestartAndUpdate(updateFilePath) {
@@ -180,66 +174,57 @@ const Launcher = {
         this.pendingUpdateFile = undefined;
     },
     setClipboardText(text) {
-        return this.electron().clipboard.writeText(text);
+        ea.clipboardWriteText(text);
     },
     getClipboardText() {
-        return this.electron().clipboard.readText();
+        return ea.clipboardReadText();
     },
     clearClipboardText() {
-        const { clipboard } = this.electron();
-        clipboard.clear();
-        if (process.platform === 'linux') {
-            clipboard.clear('selection');
-        }
+        ea.clipboardClear();
     },
     quitOnRealQuitEventIfMinimizeOnQuitIsEnabled() {
         return !!this.pendingUpdateFile;
     },
     minimizeApp() {
-        this.remoteApp().minimizeApp({
+        ea.remoteAppMinimizeApp({
             restore: Locale.menuRestoreApp.replace('{}', 'KeeWeb'),
             quit: Locale.menuQuitApp.replace('{}', 'KeeWeb')
         });
     },
     canDetectOsSleep() {
-        return process.platform !== 'linux';
+        return ea.platform !== 'linux';
     },
     updaterEnabled() {
-        return process.platform !== 'linux';
+        return ea.platform !== 'linux';
     },
     getMainWindow() {
-        return this.remoteApp().getMainWindow();
+        return null;
     },
     resolveProxy(url, callback) {
-        const window = this.getMainWindow();
-        const session = window.webContents.session;
-        session.resolveProxy(url).then((proxy) => {
+        ea.remoteAppResolveProxy(url).then((proxy) => {
             const match = /^proxy\s+([\w\.]+):(\d+)+\s*/i.exec(proxy);
             proxy = match && match[1] ? { host: match[1], port: +match[2] } : null;
             callback(proxy);
         });
     },
     hideApp() {
-        const app = this.remoteApp();
-        if (this.platform() === 'darwin') {
-            app.hide();
+        if (ea.platform === 'darwin') {
+            ea.remoteAppHide();
         } else {
-            app.minimizeThenHideIfInTray();
+            ea.remoteAppMinimizeThenHideIfInTray();
         }
     },
     isAppFocused() {
-        return !!this.req('@electron/remote').BrowserWindow.getFocusedWindow();
+        return ea.isAppFocused();
     },
     showMainWindow() {
-        this.remoteApp().showAndFocusMainWindow();
+        ea.remoteAppShowAndFocusMainWindow();
     },
     spawn(config) {
         const ts = logger.ts();
-        const { ipcRenderer } = this.electron();
         let { complete } = config;
         delete config.complete;
-        ipcRenderer
-            .invoke('spawnProcess', config)
+        ea.ipcInvoke('spawnProcess', config)
             .then((res) => {
                 if (res.err) {
                     logger.error('spawn error: ' + config.cmd + ', ' + logger.ts(ts), res.err);
@@ -252,7 +237,7 @@ const Launcher = {
                     if (code !== 0) {
                         logger.error(msg + '\n' + stdout + '\n' + stderr);
                     } else {
-                        logger.info(msg + (stdout && !config.noStdOutLogging ? '\n' + stdout : ''));
+                        logger.info(msg + (stdout && !config.noStdOutLogging ? '\n' : ''));
                     }
                     complete?.(code !== 0 ? 'Exit code ' + code : null, stdout, code);
                 }
@@ -277,19 +262,19 @@ const Launcher = {
         }
     },
     setGlobalShortcuts(appSettings) {
-        this.remoteApp().setGlobalShortcuts(appSettings);
+        ea.remoteAppSetGlobalShortcuts(appSettings);
     },
     minimizeMainWindow() {
-        this.getMainWindow().minimize();
+        ea.mainWindowMinimize();
     },
     maximizeMainWindow() {
-        this.getMainWindow().maximize();
+        ea.mainWindowMaximize();
     },
     restoreMainWindow() {
-        this.getMainWindow().restore();
+        ea.mainWindowRestore();
     },
     mainWindowMaximized() {
-        return this.getMainWindow().isMaximized();
+        return ea.mainWindowIsMaximized();
     }
 };
 
@@ -311,18 +296,18 @@ if (window.launcherOpenedFile) {
 Events.on('app-ready', () =>
     setTimeout(() => {
         Launcher.checkOpenFiles();
-        Launcher.remoteApp().setAboutPanelOptions({
+        ea.remoteAppSetAboutPanelOptions({
             applicationVersion: RuntimeInfo.version,
             version: RuntimeInfo.commit
         });
     }, 0)
 );
 
-if (process.platform === 'darwin') {
-    Launcher.remoteApp().setHookBeforeQuitEvent(true);
+if (ea.platform === 'darwin') {
+    ea.remoteAppSetHookBeforeQuitEvent(true);
 }
 
-Launcher.remoteApp().on('remote-app-event', (e) => {
+ea.remoteAppOn('remote-app-event', (e) => {
     if (window.debugRemoteAppEvents) {
         logger.debug('remote-app-event', e.name);
     }

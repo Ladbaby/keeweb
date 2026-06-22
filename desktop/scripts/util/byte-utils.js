@@ -5,14 +5,16 @@ module.exports = {
         const data = Buffer.from(val.data);
         const salt = Buffer.from(val.salt);
 
-        val.data.fill(0);
-        val.salt.fill(0);
+        if (typeof val.data.fill === 'function') {
+            val.data.fill(0);
+        }
+        if (typeof val.salt.fill === 'function') {
+            val.salt.fill(0);
+        }
 
         for (let i = 0; i < data.length; i++) {
             data[i] ^= salt[i];
         }
-
-        salt.fill(0);
 
         return data;
     },
@@ -23,7 +25,7 @@ module.exports = {
         for (let i = 0; i < data.length; i++) {
             data[i] ^= salt[i];
         }
-        const result = { data: [...data], salt: [...salt] };
+        const result = { data: new Uint8Array(data), salt: new Uint8Array(salt) };
         data.fill(0);
         salt.fill(0);
 

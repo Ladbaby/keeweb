@@ -130,24 +130,28 @@ class StorageFile extends StorageBase {
         const names = Launcher.parsePath(path);
         if (!fileWatchers[names.dir] && !names.dir.startsWith('\\')) {
             this.logger.debug('Watch dir', names.dir);
-            let fsWatcher;
+            let watcherId;
             try {
-                fsWatcher = Launcher.createFsWatcher(names.dir);
+                watcherId = Launcher.createFsWatcher(names.dir);
             } catch (e) {
                 this.logger.warn('Error watching dir', e);
             }
-            if (fsWatcher) {
-                fsWatcher.on('change', this.fsWatcherChange.bind(this, names.dir));
+            if (watcherId != null) {
+                Launcher.fsWatcherOn(
+                    watcherId,
+                    'change',
+                    this.fsWatcherChange.bind(this, names.dir)
+                );
                 fileWatchers[names.dir] = {
-                    fsWatcher,
+                    watcherId,
                     callbacks: []
                 };
             }
         }
 
-        const fsWatcher = fileWatchers[names.dir];
-        if (fsWatcher) {
-            fsWatcher.callbacks.push({
+        const entry = fileWatchers[names.dir];
+        if (entry) {
+            entry.callbacks.push({
                 file: names.file,
                 callback
             });
@@ -164,7 +168,7 @@ class StorageFile extends StorageBase {
             }
             if (!watcher.callbacks.length) {
                 this.logger.debug('Stop watch dir', names.dir);
-                watcher.fsWatcher.close();
+                Launcher.fsWatcherClose(watcher.watcherId);
                 delete fileWatchers[names.dir];
             }
         }

@@ -244,8 +244,7 @@ const Updater = {
 
     verifySignature(assetFilePath, assetName, callback) {
         logger.info('Verifying update signature', assetName);
-        const fs = Launcher.req('fs');
-        const signaturesTxt = fs.readFileSync(assetFilePath + '.sign', 'utf8');
+        const signaturesTxt = window.electronAPI.fsReadFileSync(assetFilePath + '.sign', 'utf8');
         const assetSignatureLine = signaturesTxt
             .split('\n')
             .find((line) => line.endsWith(assetName));
@@ -255,7 +254,7 @@ const Updater = {
             return;
         }
         const signature = kdbxweb.ByteUtils.hexToBytes(assetSignatureLine.split(' ')[0]);
-        const fileBytes = fs.readFileSync(assetFilePath);
+        const fileBytes = window.electronAPI.fsReadFileSync(assetFilePath);
         SignatureVerifier.verify(fileBytes, signature)
             .catch((e) => {
                 logger.error('Error verifying signature', e);

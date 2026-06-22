@@ -10,6 +10,20 @@ import { AppSettingsModel } from 'models/app-settings-model';
 
 const logger = new Logger('chal-resp');
 
+function toHex(bytes) {
+    return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+function fromHex(hex) {
+    const arr = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+        arr[i / 2] = parseInt(hex.substr(i, 2), 16);
+    }
+    return arr;
+}
+
 const ChalRespCalculator = {
     cache: {},
 
@@ -23,14 +37,14 @@ const ChalRespCalculator = {
         }
         return (challenge) => {
             return new Promise((resolve, reject) => {
-                challenge = Buffer.from(challenge);
-                const hexChallenge = challenge.toString('hex');
+                challenge = new Uint8Array(challenge);
+                const hexChallenge = toHex(challenge);
 
                 const cacheKey = this.getCacheKey(params);
                 const respFromCache = this.cache[cacheKey]?.[hexChallenge];
                 if (respFromCache) {
                     logger.debug('Found ChalResp in cache');
-                    return resolve(Buffer.from(respFromCache, 'hex'));
+                    return resolve(fromHex(respFromCache));
                 }
 
                 if (!AppSettingsModel.enableUsb) {
@@ -107,8 +121,8 @@ const ChalRespCalculator = {
                 this.cache[cacheKey] = {};
             }
 
-            const hexChallenge = challenge.toString('hex');
-            this.cache[cacheKey][hexChallenge] = response.toString('hex');
+            const hexChallenge = toHex(challenge);
+            this.cache[cacheKey][hexChallenge] = toHex(response);
 
             logger.info('Calculated YubiKey ChalResp');
             callback(null, response);

@@ -1,10 +1,12 @@
 #![cfg(windows)]
 
 use std::sync::Mutex;
+use std::time::Instant;
 
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Nonce};
 use napi::bindgen_prelude::*;
+use rand::rngs::OsRng;
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 use windows::Security::Credentials::UI::{
@@ -15,9 +17,10 @@ use windows::Win32::Security::Cryptography::CRYPTPROTECT_UI_FORBIDDEN;
 
 const KEY_TAG_PREFIX: &str = "KeeWeb_WH_";
 const AES_NONCE_LEN: usize = 12;
+const KEY_CACHE_TTL_SECS: u64 = 900;
 
 lazy_static::lazy_static! {
-    static ref KEY_CACHE: Mutex<std::collections::HashMap<String, Vec<u8>>> =
+    static ref KEY_CACHE: Mutex<std::collections::HashMap<String, (Vec<u8>, Instant)>> =
         Mutex::new(std::collections::HashMap::new());
 }
 
@@ -70,7 +73,25 @@ struct Credential {
 }
 
 const CRED_TYPE_GENERIC: u32 = 1;
-const CRED_PERSIST_LOCAL_MACHINE: u32 = 3;
+const CRED_PERSIST_CURRENT_USER: u32 = 2;
+
+fn validate_key_tag(key_tag: &str) -> Result<()> {
+    if key_tag.is_empty() {
+        return Err(Error::from_reason("key_tag must not be empty"));
+    }
+    if key_tag.len() > 100 {
+        return Err(Error::from_reason("key_tag too long"));
+    }
+    if !key_tag
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+    {
+        return Err(Error::from_reason(
+            "key_tag contains invalid characters (allowlist: a-z, A-Z, 0-9, ., -, _)",
+        ));
+    }
+    Ok(())
+}
 
 #[link(name = "advapi32")]
 extern "system" {
@@ -94,7 +115,6 @@ pub async fn is_available() -> Result<bool> {
     Ok(matches!(
         availability,
         UserConsentVerifierAvailability::Available
-            | UserConsentVerifierAvailability::DeviceBusy
     ))
 }
 
@@ -108,17 +128,18 @@ async fn authenticate(message: &str) -> Result<bool> {
 }
 
 pub async fn protect(key_tag: &str, data: Buffer) -> Result<Buffer> {
+    validate_key_tag(key_tag)?;
     if !authenticate("KeeWeb - authenticate to unlock password storage").await? {
         return Err(Error::from_reason("User refused"));
     }
 
-    let key = get_or_create_key(key_tag)?;
+    let key = get_or_create_key(key_tag).await?;
 
     let cipher = Aes256Gcm::new_from_slice(&key)
         .map_err(|e| Error::from_reason(format!("Invalid key: {}", e)))?;
 
     let mut nonce_bytes = [0u8; AES_NONCE_LEN];
-    rand::thread_rng().fill_bytes(&mut nonce_bytes);
+    OsRng.fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher
@@ -132,12 +153,13 @@ pub async fn protect(key_tag: &str, data: Buffer) -> Result<Buffer> {
     Ok(result.into())
 }
 
-pub async fn unprotect(key_tag: &str, data: Buffer) -> Result<Buffer> {
-    if !authenticate("KeeWeb - authenticate to unlock password storage").await? {
+pub async fn unprotect(key_tag: &str, message: &str, data: Buffer) -> Result<Buffer> {
+    validate_key_tag(key_tag)?;
+    if !authenticate(message).await? {
         return Err(Error::from_reason("User refused"));
     }
 
-    let key = get_or_create_key(key_tag)?;
+    let key = get_or_create_key(key_tag).await?;
 
     if data.len() < AES_NONCE_LEN {
         return Err(Error::from_reason("Invalid encrypted data"));
@@ -157,36 +179,44 @@ pub async fn unprotect(key_tag: &str, data: Buffer) -> Result<Buffer> {
 }
 
 pub async fn delete_key(key_tag: &str) -> Result<()> {
+    validate_key_tag(key_tag)?;
     KEY_CACHE.lock().unwrap().remove(key_tag);
     let vault_key = format!("{}{}", KEY_TAG_PREFIX, key_tag);
     delete_credential(&vault_key);
     Ok(())
 }
 
-fn get_or_create_key(key_tag: &str) -> Result<Vec<u8>> {
+async fn get_or_create_key(key_tag: &str) -> Result<Vec<u8>> {
     let vault_key = format!("{}{}", KEY_TAG_PREFIX, key_tag);
 
     {
-        let cache = KEY_CACHE.lock().unwrap();
-        if let Some(key) = cache.get(key_tag) {
-            return Ok(key.clone());
+        let mut cache = KEY_CACHE.lock().unwrap();
+        if let Some((key, cached_at)) = cache.get(key_tag) {
+            if cached_at.elapsed().as_secs() < KEY_CACHE_TTL_SECS {
+                return Ok(key.clone());
+            }
+            cache.remove(key_tag);
         }
     }
 
     match load_credential(&vault_key) {
         Ok(Some(blob)) => {
             let key = dpapi_unprotect(&blob, &vault_key)?;
-            KEY_CACHE.lock().unwrap().insert(key_tag.to_string(), key.clone());
+            KEY_CACHE.lock().unwrap().insert(key_tag.to_string(), (key.clone(), Instant::now()));
             Ok(key)
         }
         _ => {
+            if !authenticate("KeeWeb - authenticate to create encryption key").await? {
+                return Err(Error::from_reason("User refused authentication"));
+            }
+
             let mut key = vec![0u8; 32];
-            rand::thread_rng().fill_bytes(&mut key);
+            OsRng.fill_bytes(&mut key);
 
             let blob = dpapi_protect(&key, &vault_key)?;
             store_credential(&vault_key, &blob)?;
 
-            KEY_CACHE.lock().unwrap().insert(key_tag.to_string(), key.clone());
+            KEY_CACHE.lock().unwrap().insert(key_tag.to_string(), (key.clone(), Instant::now()));
             Ok(key)
         }
     }
@@ -264,7 +294,7 @@ fn store_credential(name: &str, data: &[u8]) -> Result<()> {
         last_written: 0,
         credential_blob_size: data.len().try_into().unwrap(),
         credential_blob: data.as_ptr(),
-        persistence: CRED_PERSIST_LOCAL_MACHINE,
+        persistence: CRED_PERSIST_CURRENT_USER,
         attribute_count: 0,
         attributes: std::ptr::null(),
         target_alias: std::ptr::null(),

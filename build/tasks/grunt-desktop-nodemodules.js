@@ -30,22 +30,21 @@ module.exports = function (grunt) {
                 }
             }
 
-            // Try symlink first (works on Unix, may require admin on Windows)
-            try {
-                if (process.platform !== 'win32') {
+            // Try symlink first on Unix; on Windows, electron-packager
+            // cannot follow junctions into the asar, so always copy.
+            if (process.platform !== 'win32') {
+                try {
                     fs.symlinkSync(srcModules, destModules, 'dir');
                     grunt.log.writeln('Created node_modules symlink in ' + targetDir);
                     done();
                     return;
+                } catch (e) {
+                    grunt.log.warn(
+                        'Symlink failed (' + e.message + '), falling back to package copy'
+                    );
                 }
-
-                // On Windows, try junction (may still require admin)
-                fs.symlinkSync(srcModules, destModules, 'junction');
-                grunt.log.writeln('Created node_modules junction in ' + targetDir);
-                done();
-                return;
-            } catch (e) {
-                grunt.log.warn('Symlink failed (' + e.message + '), falling back to package copy');
+            } else {
+                grunt.log.writeln('Windows: using package copy instead of junction');
             }
 
             // Fallback: copy only required packages

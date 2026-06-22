@@ -1,6 +1,6 @@
 let Launcher;
 
-if (window.process && window.process.versions && window.process.versions.electron) {
+if (window.electronAPI && window.electronAPI.isElectron) {
     Launcher = require('./launcher-electron').Launcher;
 }
 
