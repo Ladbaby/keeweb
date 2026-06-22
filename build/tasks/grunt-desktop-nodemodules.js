@@ -31,7 +31,7 @@ module.exports = function (grunt) {
             }
 
             // Try symlink first on Unix; on Windows, electron-packager
-            // cannot follow junctions into the asar, so always copy.
+            // cannot follow junctions into the asar, so do a full recursive copy.
             if (process.platform !== 'win32') {
                 try {
                     fs.symlinkSync(srcModules, destModules, 'dir');
@@ -40,66 +40,19 @@ module.exports = function (grunt) {
                     return;
                 } catch (e) {
                     grunt.log.warn(
-                        'Symlink failed (' + e.message + '), falling back to package copy'
+                        'Symlink failed (' + e.message + '), falling back to full copy'
                     );
+                    fsExtra.copySync(srcModules, destModules);
+                    grunt.log.writeln('Copied full node_modules to ' + targetDir);
+                    done();
+                    return;
                 }
             } else {
-                grunt.log.writeln('Windows: using package copy instead of junction');
+                grunt.log.writeln('Windows: copying full node_modules to ' + targetDir);
+                fsExtra.copySync(srcModules, destModules);
+                done();
+                return;
             }
-
-            // Fallback: copy only required packages
-            try {
-                fs.mkdirSync(destModules, { recursive: true });
-
-                // Packages required by desktop/main.js and desktop/native-module-host.js
-                // These match the dependencies in desktop/package.json
-                const requiredPkgs = [
-                    '@electron/remote',
-                    '@keeweb/keeweb-native-modules',
-                    'node-fetch',
-                    'keytar'
-                ];
-
-                // Optional packages (only copy if available in root)
-                const optionalPkgs = [];
-
-                for (const pkg of requiredPkgs) {
-                    const src = path.join(srcModules, pkg);
-                    if (!fs.existsSync(src)) {
-                        grunt.warn('Required package not found: ' + pkg);
-                        continue;
-                    }
-
-                    // Handle scoped packages (e.g. @electron/remote)
-                    let dest;
-                    if (pkg.startsWith('@')) {
-                        const parts = pkg.split('/');
-                        const scopeDir = path.join(destModules, parts[0]);
-                        fs.mkdirSync(scopeDir, { recursive: true });
-                        dest = path.join(scopeDir, parts[1]);
-                    } else {
-                        dest = path.join(destModules, pkg);
-                    }
-
-                    fsExtra.copySync(src, dest);
-                    grunt.log.writeln('Copied ' + pkg);
-                }
-
-                for (const pkg of optionalPkgs) {
-                    const src = path.join(srcModules, pkg);
-                    if (fs.existsSync(src)) {
-                        const dest = path.join(destModules, pkg);
-                        fsExtra.copySync(src, dest);
-                        grunt.log.writeln('Copied ' + pkg);
-                    }
-                }
-
-                grunt.log.writeln('Desktop node_modules prepared in ' + targetDir);
-            } catch (e) {
-                grunt.warn('Failed to prepare node_modules: ' + e.message);
-            }
-
-            done();
         }
     );
 };
