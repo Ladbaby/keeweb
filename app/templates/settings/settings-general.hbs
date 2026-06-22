@@ -191,15 +191,15 @@
     </div>
     {{#if hasDeviceOwnerAuth}}
         <div>
-            <label for="settings__general-device-owner-auth">{{res 'setGenTouchId'}}:</label>
+            <label for="settings__general-device-owner-auth">{{res 'setGenBioAuth'}}:</label>
             <select class="settings__general-device-owner-auth settings__select input-base" id="settings__general-device-owner-auth">
-                <option value="" {{#unless deviceOwnerAuth}}selected{{/unless}}>{{res 'setGenTouchIdDisabled'}}</option>
-                <option value="memory" {{#ifeq deviceOwnerAuth 'memory'}}selected{{/ifeq}}>{{res 'setGenTouchIdMemory'}}</option>
-                <option value="file" {{#ifeq deviceOwnerAuth 'file'}}selected{{/ifeq}}>{{res 'setGenTouchIdFile'}}</option>
+                <option value="" {{#unless deviceOwnerAuth}}selected{{/unless}}>{{res 'setGenBioAuthDisabled'}}</option>
+                <option value="memory" {{#ifeq deviceOwnerAuth 'memory'}}selected{{/ifeq}}>{{res 'setGenBioAuthMemory'}}</option>
+                <option value="file" {{#ifeq deviceOwnerAuth 'file'}}selected{{/ifeq}}>{{res 'setGenBioAuthFile'}}</option>
             </select>
         </div>
         {{#if deviceOwnerAuth}}
-            <label for="settings__general-device-owner-auth-timeout">{{res 'setGenTouchIdPass'}}:</label>
+            <label for="settings__general-device-owner-auth-timeout">{{res 'setGenBioAuthPass'}}:</label>
             <select class="settings__general-device-owner-auth-timeout settings__select input-base" id="settings__general-device-owner-auth-timeout">
                 <option value="1" {{#ifeq deviceOwnerAuthTimeout 1}}selected{{/ifeq}}>{{Res 'oneMinute'}}</option>
                 <option value="5" {{#ifeq deviceOwnerAuthTimeout 5}}selected{{/ifeq}}>{{#Res 'minutes'}}5{{/Res}}</option>

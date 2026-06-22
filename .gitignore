@@ -1,3 +1,5 @@
+native/windows-hello/target/
+native/windows-hello/windows-hello.win32-x64-msvc.node
 # #
 #    Windows image file caches
 # #

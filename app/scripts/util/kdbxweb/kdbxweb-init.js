@@ -12,13 +12,23 @@ const KdbxwebInit = {
 
     argon2(password, salt, memory, iterations, length, parallelism, type, version) {
         const args = { password, salt, memory, iterations, length, parallelism, type, version };
-        return this.loadRuntime(memory).then((runtime) => {
-            const ts = logger.ts();
-            return runtime.hash(args).then((hash) => {
-                logger.debug('Hash computed', logger.ts(ts));
-                return hash;
+        return this.loadRuntime(memory)
+            .then((runtime) => {
+                const ts = logger.ts();
+                return runtime.hash(args).then((hash) => {
+                    logger.debug('Hash computed', logger.ts(ts));
+                    return hash;
+                });
+            })
+            .catch((err) => {
+                if (this._nativeArgon2Failed && this.runtimeModule === null) {
+                    logger.warn('Retrying argon2 with WASM fallback');
+                    return this.loadRuntime(memory).then((runtime) => {
+                        return runtime.hash(args);
+                    });
+                }
+                throw err;
             });
-        });
     },
 
     loadRuntime(requiredMemory) {
@@ -30,6 +40,8 @@ const KdbxwebInit = {
         }
         if (Features.isDesktop) {
             logger.debug('Using native argon2');
+            const self = this;
+            const NATIVE_TIMEOUT = 60000;
             this.runtimeModule = {
                 hash(args) {
                     const ts = logger.ts();
@@ -37,7 +49,7 @@ const KdbxwebInit = {
                     const password = kdbxweb.ProtectedValue.fromBinary(args.password).dataAndSalt();
                     const salt = kdbxweb.ProtectedValue.fromBinary(args.salt).dataAndSalt();
 
-                    return NativeModules.argon2(password, salt, {
+                    const argon2Promise = NativeModules.argon2(password, salt, {
                         type: args.type,
                         version: args.version,
                         hashLength: args.length,
@@ -45,7 +57,13 @@ const KdbxwebInit = {
                         timeCost: args.iterations,
                         parallelism: args.parallelism,
                         memoryCost: args.memory
-                    })
+                    });
+
+                    const timeoutPromise = new Promise((resolve, reject) =>
+                        setTimeout(() => reject(new Error('timeout')), NATIVE_TIMEOUT)
+                    );
+
+                    return Promise.race([argon2Promise, timeoutPromise])
                         .then((res) => {
                             password.data.fill(0);
                             salt.data.fill(0);
@@ -59,7 +77,12 @@ const KdbxwebInit = {
                             password.data.fill(0);
                             salt.data.fill(0);
 
-                            logger.error('Argon2 error', err);
+                            logger.error(
+                                'Native argon2 error/timed out, falling back to WASM',
+                                err
+                            );
+                            self._nativeArgon2Failed = true;
+                            self.runtimeModule = null;
                             throw err;
                         });
                 }

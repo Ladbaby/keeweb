@@ -4,4 +4,5 @@ module.exports.setupIpcHandlers = () => {
     require('./ipc-handlers/native-module-host-proxy');
     require('./ipc-handlers/spawn-process');
     require('./ipc-handlers/set-locale');
+    require('./ipc-handlers/windows-hello');
 };

@@ -144,7 +144,7 @@ class SettingsGeneralView extends View {
             titlebarStyle: AppSettingsModel.titlebarStyle,
             storageProviders,
             showReloadApp: Features.isStandalone,
-            hasDeviceOwnerAuth: Features.isDesktop && Features.isMac,
+            hasDeviceOwnerAuth: Features.hasDeviceOwnerAuth,
             deviceOwnerAuth: AppSettingsModel.deviceOwnerAuth,
             deviceOwnerAuthTimeout: AppSettingsModel.deviceOwnerAuthTimeoutMinutes,
             disableOfflineStorage: AppSettingsModel.disableOfflineStorage,
@@ -459,7 +459,7 @@ class SettingsGeneralView extends View {
 
         this.appModel.checkEncryptedPasswordsStorage();
         if (!deviceOwnerAuth) {
-            NativeModules.hardwareCryptoDeleteKey().catch(() => {});
+            NativeModules.deviceDeleteKey().catch(() => {});
         }
     }
 

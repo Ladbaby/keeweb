@@ -296,6 +296,7 @@ function createMainWindow() {
         backgroundColor: bgColor,
         webPreferences: {
             backgroundThrottling: false,
+            contextIsolation: false,
             nodeIntegration: true,
             nodeIntegrationInWorker: true,
             spellcheck: false,

@@ -360,7 +360,7 @@ class OpenView extends View {
         const canUseEncryptedPassword = available && passEmpty;
         this.el
             .querySelector('.open__pass-enter-btn')
-            .classList.toggle('open__pass-enter-btn--touch-id', canUseEncryptedPassword);
+            .classList.toggle('open__pass-enter-btn--bio', canUseEncryptedPassword);
     }
 
     setFile(file, keyFile, fileReadyCallback) {
@@ -684,7 +684,7 @@ class OpenView extends View {
                 this.encryptedPassword.value
             );
             Events.emit('hardware-decrypt-started');
-            NativeModules.hardwareDecrypt(encryptedPassword, touchIdPrompt)
+            NativeModules.deviceDecrypt(encryptedPassword, touchIdPrompt)
                 .then((password) => {
                     Events.emit('hardware-decrypt-finished');
 

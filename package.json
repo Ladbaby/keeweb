@@ -31,7 +31,6 @@
     "css-loader": "^5.2.7",
     "css-minimizer-webpack-plugin": "^8.0.0",
     "dompurify": "^3.4.11",
-    "electron": "^42.4.1",
     "electron-builder": "^23.6.0",
     "electron-evil-feature-patcher": "^1.2.1",
     "electron-notarize": "^1.0.0",
@@ -137,5 +136,8 @@
     "last 1 Opera version",
     "last 1 ChromeAndroid version",
     "Electron > 13"
-  ]
+  ],
+  "devDependencies": {
+    "electron": "^28.3.3"
+  }
 }

@@ -1,0 +1,15 @@
+{
+  "name": "windows-hello",
+  "version": "0.1.0",
+  "private": true,
+  "napi": {
+    "binaryName": "windows-hello",
+    "targets": [
+      "x86_64-pc-windows-msvc",
+      "i686-pc-windows-msvc"
+    ]
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.7.2"
+  }
+}

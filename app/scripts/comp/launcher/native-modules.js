@@ -3,6 +3,7 @@ import { Events } from 'framework/events';
 import { Logger } from 'util/logger';
 import { Launcher } from 'comp/launcher';
 import { Timeouts } from 'const/timeouts';
+import { Features } from 'util/features';
 
 let NativeModules;
 
@@ -203,6 +204,30 @@ if (Launcher) {
             return new kdbxweb.ProtectedValue(data, salt);
         },
 
+        windowsHelloEncrypt: async (value) => {
+            const { data, salt } = await ipcRenderer.invoke(
+                'windowsHelloEncrypt',
+                value.dataAndSalt()
+            );
+            return new kdbxweb.ProtectedValue(data, salt);
+        },
+
+        windowsHelloDecrypt: async (value) => {
+            const { data, salt } = await ipcRenderer.invoke(
+                'windowsHelloDecrypt',
+                value.dataAndSalt()
+            );
+            return new kdbxweb.ProtectedValue(data, salt);
+        },
+
+        windowsHelloDeleteKey: async () => {
+            await ipcRenderer.invoke('windowsHelloDeleteKey');
+        },
+
+        windowsHelloIsAvailable: async () => {
+            return await ipcRenderer.invoke('windowsHelloIsAvailable');
+        },
+
         kbdGetActiveWindow(options) {
             return this.call('kbdGetActiveWindow', options);
         },
@@ -243,6 +268,17 @@ if (Launcher) {
             return this.call('kbdEnsureModifierNotPressed');
         }
     };
+
+    // Unified cross-platform device owner auth API
+    NativeModules.deviceEncrypt = Features.isWindows
+        ? NativeModules.windowsHelloEncrypt
+        : NativeModules.hardwareEncrypt;
+    NativeModules.deviceDecrypt = Features.isWindows
+        ? NativeModules.windowsHelloDecrypt
+        : NativeModules.hardwareDecrypt;
+    NativeModules.deviceDeleteKey = Features.isWindows
+        ? NativeModules.windowsHelloDeleteKey
+        : NativeModules.hardwareCryptoDeleteKey;
 
     global.NativeModules = NativeModules;
 }

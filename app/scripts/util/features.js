@@ -24,6 +24,9 @@ const Features = {
     get supportsCustomTitleBarAndDraggableWindow() {
         return isDesktop && this.isMac;
     },
+    get hasDeviceOwnerAuth() {
+        return isDesktop && (this.isMac || this.isWindows);
+    },
     get renderCustomTitleBar() {
         return isDesktop && this.isWindows;
     },

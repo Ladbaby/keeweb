@@ -1365,7 +1365,7 @@ class AppModel {
         if (!this.settings.deviceOwnerAuth || params.encryptedPassword) {
             return;
         }
-        NativeModules.hardwareEncrypt(params.password)
+        NativeModules.deviceEncrypt(params.password)
             .then((encryptedPassword) => {
                 encryptedPassword = encryptedPassword.toBase64();
                 const fileInfo = this.fileInfos.get(file.id);
