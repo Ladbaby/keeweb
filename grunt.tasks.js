@@ -22,7 +22,7 @@ module.exports = function (grunt) {
         'copy:desktop-html',
         'copy:desktop-app-content',
         'string-replace:desktop-public-key',
-        'desktop-nodemodules'
+        'desktop-npm-install'
     ]);
 
     grunt.registerTask('build-desktop-executables-linux', [

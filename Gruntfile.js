@@ -340,7 +340,7 @@ module.exports = function (grunt) {
                 files: { 'tmp/desktop/app/main.js': 'desktop/main.js' }
             }
         },
-        'desktop-nodemodules': {
+        'desktop-npm-install': {
             default: {}
         },
         webpack: {
@@ -374,7 +374,7 @@ module.exports = function (grunt) {
                 electronVersion,
                 overwrite: true,
                 asar: true,
-                prune: false,
+                prune: true,
                 appCopyright: `Copyright © ${year} Antelle`,
                 appVersion: pkg.version,
                 buildVersion: sha
