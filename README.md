@@ -32,6 +32,12 @@ KeeWeb is a browser and desktop password manager which is capable of opening up 
 
 ---
 
+This is a fork of KeeWeb, supporting **Windows Hello** unlocking.
+
+DISCLAIMER: Feature is implemented via vibe coding. The author has tried to fix possible security problems, but with no guarantee. Use at your own risk.
+
+---
+
 <br />
 
 - [About](#about)
